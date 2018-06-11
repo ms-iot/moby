@@ -12,10 +12,10 @@ import (
 	"github.com/docker/docker/integration/internal/network"
 	"github.com/docker/docker/integration/internal/swarm"
 	"github.com/docker/docker/internal/test/daemon"
-	"github.com/gotestyourself/gotestyourself/assert"
-	"github.com/gotestyourself/gotestyourself/icmd"
-	"github.com/gotestyourself/gotestyourself/poll"
-	"github.com/gotestyourself/gotestyourself/skip"
+	"gotest.tools/assert"
+	"gotest.tools/icmd"
+	"gotest.tools/poll"
+	"gotest.tools/skip"
 )
 
 // delInterface removes given network interface
