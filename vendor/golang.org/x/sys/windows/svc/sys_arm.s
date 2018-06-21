@@ -8,10 +8,8 @@
 
 // func servicemain(argc uint32, argv **uint16)
 TEXT ·servicemain(SB),NOSPLIT,$0
-	MOVW	(R13), R0	// argc
 	MOVW	R0, ·sArgc(SB)
-	MOVW	$4(R13), R0	// argv
-	MOVW	R0, ·sArgv(SB)
+	MOVW	R1, ·sArgv(SB)
 
 	MOVM.DB.W [R1, R2, R3, R4, R14], (R13)  	// push {R1..R4, lr}
 	MOVW    R13, R4
