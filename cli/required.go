@@ -9,7 +9,8 @@ import (
 
 // NoArgs validates args and returns an error if there are any args
 func NoArgs(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
+    // On Windows there is at least a single argument, the binary itself
+	if len(args) <= 1 {
 		return nil
 	}
 

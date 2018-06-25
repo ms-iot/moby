@@ -17,7 +17,7 @@ TEXT ·servicemain(SB),NOSPLIT,$0
 	BIC		$0x7, R13	// alignment for ABI
 
 	MOVW	·sName(SB), R0
-	MOVW	$·servicectlhandler(SB), R1
+	MOVW	·ctlHandlerExProc(SB), R1
 	MOVW	$0, R2
 	MOVW	·cRegisterServiceCtrlHandlerExW(SB), R3
 	BL		(R3)
@@ -35,10 +35,5 @@ TEXT ·servicemain(SB),NOSPLIT,$0
 	BL		(R2)
 
 exit:
-	MOVW	R4, R13		// free stack space
+	MOVW	R4, R13		// free extra stack space
 	MOVM.IA.W (R13), [R1, R2, R3, R4, R15]	// pop {R1..R4, pc}
-
-// func servicectlhandler(ctl uint32, evtype uint32, evdata uintptr, context uintptr) uintptr {
-TEXT ·servicectlhandler(SB),NOSPLIT,$0
-	MOVW	·ctlHandlerExProc(SB), R5
-	B		(R5)
