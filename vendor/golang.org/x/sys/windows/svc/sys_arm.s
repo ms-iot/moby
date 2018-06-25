@@ -40,5 +40,5 @@ exit:
 
 // func servicectlhandler(ctl uint32, evtype uint32, evdata uintptr, context uintptr) uintptr {
 TEXT ·servicectlhandler(SB),NOSPLIT,$0
-	MOVW	·ctlHandlerExProc(SB), R0
-	B		(R0)
+	MOVW	·ctlHandlerExProc(SB), R5
+	B		(R5)
