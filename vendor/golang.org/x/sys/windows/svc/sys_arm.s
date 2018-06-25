@@ -22,7 +22,7 @@ TEXT ·servicemain(SB),NOSPLIT,$0
 	MOVW	·cRegisterServiceCtrlHandlerExW(SB), R3
 	BL		(R3)
 	CMP		$0, R0
-	BNE		exit
+	BEQ		exit
 	MOVW	R0, ·ssHandle(SB)
 
 	MOVW	·goWaitsH(SB), R0
