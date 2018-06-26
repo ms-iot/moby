@@ -20,19 +20,19 @@ TEXT ·servicemain(SB),NOSPLIT,$0
 	MOVW	·ctlHandlerExProc(SB), R1
 	MOVW	$0, R2
 	MOVW	·cRegisterServiceCtrlHandlerExW(SB), R3
-	BL		(R3)
-	CMP		$0, R0
-	BEQ		exit
+	BL      (R3)
+	CMP     $0, R0
+	BEQ     exit
 	MOVW	R0, ·ssHandle(SB)
 
 	MOVW	·goWaitsH(SB), R0
 	MOVW	·cSetEvent(SB), R1
-	BL		(R1)
+	BL      (R1)
 
 	MOVW	·cWaitsH(SB), R0
 	MOVW	$-1, R1
 	MOVW	·cWaitForSingleObject(SB), R2
-	BL		(R2)
+	BL      (R2)
 
 exit:
 	MOVW	R4, R13		// free extra stack space
