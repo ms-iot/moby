@@ -14,7 +14,7 @@ TEXT ·servicemain(SB),NOSPLIT,$0
 	MOVM.DB.W [R1, R2, R3, R4, R14], (R13)  	// push {R1..R4, lr}
 	MOVW    R13, R4
 	
-	BIC		$0x7, R13	// alignment for ABI
+	BIC     $0x7, R13	// alignment for ABI
 
 	MOVW	·sName(SB), R0
 	MOVW	·ctlHandlerExProc(SB), R1
