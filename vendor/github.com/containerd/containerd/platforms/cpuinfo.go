@@ -21,6 +21,9 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"strconv"
+
+	_ "unsafe"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
@@ -29,6 +32,9 @@ import (
 
 // Present the ARM instruction set architecture, eg: v7, v8
 var cpuVariant string
+
+//go:linkname runtimeGoArm runtime.goarm
+var runtimeGoArm uint8
 
 func init() {
 	if isArmArch(runtime.GOARCH) {
@@ -74,10 +80,16 @@ func getCPUInfo(pattern string) (info string, err error) {
 }
 
 func getCPUVariant() string {
-	variant, err := getCPUInfo("Cpu architecture")
-	if err != nil {
-		log.L.WithError(err).Error("failure getting variant")
-		return ""
+	var variant string
+	if runtime.GOOS == "windows" {
+		variant = strconv.Itoa(int(runtimeGoArm))
+	} else {
+		var err error
+		variant, err = getCPUInfo("Cpu architecture")
+		if err != nil {
+			log.L.WithError(err).Error("failure getting variant")
+			return ""
+		}
 	}
 
 	switch variant {
