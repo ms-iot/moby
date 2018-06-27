@@ -612,10 +612,12 @@ func (daemon *Daemon) setDefaultIsolation() error {
 				daemon.defaultIsolation = containertypes.Isolation("hyperv")
 			}
 			if containertypes.Isolation(val).IsProcess() {
-				if system.IsWindowsClient() && !system.IsIoTCore() {
-					// @engine maintainers. This block should not be removed. It partially enforces licensing
-					// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
-					return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+				if !system.IsForcePorcessIsolalationAlowed() {
+					if system.IsWindowsClient() && !system.IsIoTCore() {
+						// @engine maintainers. This block should not be removed. It partially enforces licensing
+						// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
+						return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+					}
 				}
 				daemon.defaultIsolation = containertypes.Isolation("process")
 			}
