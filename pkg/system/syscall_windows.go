@@ -9,8 +9,16 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+type procisolationpolicy int32
+
 const (
-	hcsPolicyRegistryLocation = `SOFTWARE\Microsoft\Windows NT\CurrentVersion\HostComputeService\Policy`
+	PROC_ISOLATION_DEFAULT procisolationpolicy = iota
+	PROC_ISOLATION_ALLOW
+	PROC_ISOLATION_DENY
+)
+
+const (
+	hcsPolicyRegPath = `SOFTWARE\Microsoft\Windows NT\CurrentVersion\HostComputeService\Policy`
 	isProcessIsolationAllowedRegValName = `ProcessIsolationIsAllowed`
 )
 
@@ -94,8 +102,8 @@ func IsIoTCore() bool {
 	return returnedProductType == productIoTUAP || returnedProductType == productIoTUAPCommercial
 }
 
-// IsForcePorcessIsolalationAlowed returns true if process isolation is forced
-func IsForcePorcessIsolalationAlowed() bool {
+// GetPorcessIsolalationPolicy returns the process container policy
+func GetPorcessIsolalationPolicy() procisolationpolicy {
 	var (
 		k   registry.Key
 		err error
@@ -107,13 +115,17 @@ func IsForcePorcessIsolalationAlowed() bool {
 		}
 	}()
 
-	if k, err = registry.OpenKey(registry.LOCAL_MACHINE, hcsPolicyRegistryLocation, registry.QUERY_VALUE); err != nil {
-		return false
+	if k, err = registry.OpenKey(registry.LOCAL_MACHINE, hcsPolicyRegPath, registry.QUERY_VALUE); err != nil {
+		return PROC_ISOLATION_DEFAULT
 	}
 	if val, _, err = k.GetIntegerValue(isProcessIsolationAllowedRegValName); err != nil {
-		return false
+		return PROC_ISOLATION_DEFAULT
 	}
-	return val == 1
+	if val == 1 {
+		return PROC_ISOLATION_ALLOW
+	} else {
+		return PROC_ISOLATION_DENY
+	}
 }
 
 // Unmount is a platform-specific helper function to call
