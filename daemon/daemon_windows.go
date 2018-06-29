@@ -612,17 +612,22 @@ func (daemon *Daemon) setDefaultIsolation() error {
 				daemon.defaultIsolation = containertypes.Isolation("hyperv")
 			}
 			if containertypes.Isolation(val).IsProcess() {
-				if !system.IsForcePorcessIsolalationAlowed() {
+				switch system.GetPorcessIsolalationPolicy() {
+				default: 
+					// system.PROC_ISOLATION_ALLOW
+				case system.PROC_ISOLATION_DEFAULT:
 					if system.IsWindowsClient() && !system.IsIoTCore() {
 						// @engine maintainers. This block should not be removed. It partially enforces licensing
 						// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
 						return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
 					}
+				case system.PROC_ISOLATION_DENY:
+						return fmt.Errorf("Process isolation not allowed by policy")
 				}
 				daemon.defaultIsolation = containertypes.Isolation("process")
 			}
 		default:
-			return fmt.Errorf("Unrecognised exec-opt '%s'\n", key)
+			return fmt.Errorf("Unrecognized exec-opt '%s'\n", key)
 		}
 	}
 
