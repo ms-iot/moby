@@ -198,7 +198,7 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 	if !hyperv && system.IsWindowsClient() && !system.IsIoTCore() {
 		// @engine maintainers. This block should not be removed. It partially enforces licensing
 		// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
-		return warnings, fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+		// return warnings, fmt.Errorf("Windows client operating systems only support Hyper-V containers")
 	}
 
 	w, err := verifyContainerResources(&hostConfig.Resources, hyperv)
@@ -615,7 +615,7 @@ func (daemon *Daemon) setDefaultIsolation() error {
 				if system.IsWindowsClient() && !system.IsIoTCore() {
 					// @engine maintainers. This block should not be removed. It partially enforces licensing
 					// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
-					return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+					// return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
 				}
 				daemon.defaultIsolation = containertypes.Isolation("process")
 			}
