@@ -121,11 +121,14 @@ func GetPorcessIsolalationPolicy() procisolationpolicy {
 	if val, _, err = k.GetIntegerValue(isProcessIsolationAllowedRegValName); err != nil {
 		return PROC_ISOLATION_DEFAULT
 	}
-	if val == 1 {
-		return PROC_ISOLATION_ALLOW
-	} else {
-		return PROC_ISOLATION_DENY
-	}
+    switch val {
+    default:
+        return PROC_ISOLATION_DEFAULT
+    case 0:
+        return PROC_ISOLATION_DENY
+    case 1:
+        return PROC_ISOLATION_ALLOW
+    }
 }
 
 // Unmount is a platform-specific helper function to call

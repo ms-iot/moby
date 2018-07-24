@@ -196,10 +196,17 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 
 	hyperv := daemon.runAsHyperVContainer(hostConfig)
 	if !hyperv {
-        if !system.IsForcePorcessIsolalationAlowed() && system.IsWindowsClient() && !system.IsIoTCore() {
-            // @engine maintainers. This block should not be removed. It partially enforces licensing
-            // restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
-            return warnings, fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+        switch system.GetPorcessIsolalationPolicy() {
+        default:
+            // system.PROC_ISOLATION_DEFAULT:
+            if system.IsWindowsClient() && !system.IsIoTCore() {
+                // @engine maintainers. This block should not be removed. It partially enforces licensing
+                // restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
+                return warnings, fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+            }
+        case system.PROC_ISOLATION_DENY:
+            return warnings, fmt.Errorf("Process isolation not allowed by policy") 
+        case system.PROC_ISOLATION_ALLOW:
         }
     }
 
@@ -616,8 +623,7 @@ func (daemon *Daemon) setDefaultIsolation() error {
 			if containertypes.Isolation(val).IsProcess() {
 				switch system.GetPorcessIsolalationPolicy() {
 				default: 
-					// system.PROC_ISOLATION_ALLOW
-				case system.PROC_ISOLATION_DEFAULT:
+                    // system.PROC_ISOLATION_DEFAULT:
 					if system.IsWindowsClient() && !system.IsIoTCore() {
 						// @engine maintainers. This block should not be removed. It partially enforces licensing
 						// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
@@ -625,6 +631,7 @@ func (daemon *Daemon) setDefaultIsolation() error {
 					}
 				case system.PROC_ISOLATION_DENY:
 						return fmt.Errorf("Process isolation not allowed by policy")
+				case system.PROC_ISOLATION_ALLOW:
 				}
 				daemon.defaultIsolation = containertypes.Isolation("process")
 			}
