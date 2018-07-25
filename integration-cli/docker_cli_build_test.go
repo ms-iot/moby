@@ -16,7 +16,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/docker/docker/integration-cli/checker"
 	"github.com/docker/docker/integration-cli/cli"
 	"github.com/docker/docker/integration-cli/cli/build"
@@ -26,8 +25,9 @@ import (
 	"github.com/docker/docker/internal/testutil"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/go-check/check"
-	"github.com/gotestyourself/gotestyourself/icmd"
+	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/opencontainers/go-digest"
+	"gotest.tools/icmd"
 )
 
 func (s *DockerSuite) TestBuildJSONEmptyRun(c *check.C) {
@@ -1012,10 +1012,6 @@ func (s *DockerSuite) TestBuildAddBadLinksVolume(c *check.C) {
 		ADD foo.txt /x/`
 		targetFile = "foo.txt"
 	)
-	var (
-		name       = "test-link-absolute-volume"
-		dockerfile = ""
-	)
 
 	tempDir, err := ioutil.TempDir("", "test-link-absolute-volume-temp-")
 	if err != nil {
@@ -1023,7 +1019,7 @@ func (s *DockerSuite) TestBuildAddBadLinksVolume(c *check.C) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	dockerfile = fmt.Sprintf(dockerfileTemplate, tempDir)
+	dockerfile := fmt.Sprintf(dockerfileTemplate, tempDir)
 	nonExistingFile := filepath.Join(tempDir, targetFile)
 
 	ctx := fakecontext.New(c, "", fakecontext.WithDockerfile(dockerfile))
@@ -1040,7 +1036,7 @@ func (s *DockerSuite) TestBuildAddBadLinksVolume(c *check.C) {
 		c.Fatal(err)
 	}
 
-	buildImageSuccessfully(c, name, build.WithExternalBuildContext(ctx))
+	buildImageSuccessfully(c, "test-link-absolute-volume", build.WithExternalBuildContext(ctx))
 	if _, err := os.Stat(nonExistingFile); err == nil || err != nil && !os.IsNotExist(err) {
 		c.Fatalf("%s shouldn't have been written and it shouldn't exist", nonExistingFile)
 	}
@@ -2534,7 +2530,7 @@ func (s *DockerSuite) TestBuildDockerignoringBadExclusion(c *check.C) {
 		build.WithFile(".dockerignore", "!\n"),
 	)).Assert(c, icmd.Expected{
 		ExitCode: 1,
-		Err:      "error checking context: 'illegal exclusion pattern: \"!\"",
+		Err:      `illegal exclusion pattern: "!"`,
 	})
 }
 

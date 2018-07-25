@@ -513,12 +513,17 @@ func (d *Driver) getLowerDirs(id string) ([]string, error) {
 
 // Remove cleans the directories that are created for this id.
 func (d *Driver) Remove(id string) error {
+	if id == "" {
+		return fmt.Errorf("refusing to remove the directories: id is empty")
+	}
 	d.locker.Lock(id)
 	defer d.locker.Unlock(id)
 	dir := d.dir(id)
 	lid, err := ioutil.ReadFile(path.Join(dir, "link"))
 	if err == nil {
-		if err := os.RemoveAll(path.Join(d.home, linkDir, string(lid))); err != nil {
+		if len(lid) == 0 {
+			logrus.WithField("storage-driver", "overlay2").Errorf("refusing to remove empty link for layer %v", id)
+		} else if err := os.RemoveAll(path.Join(d.home, linkDir, string(lid))); err != nil {
 			logrus.WithField("storage-driver", "overlay2").Debugf("Failed to remove link: %v", err)
 		}
 	}
@@ -749,16 +754,5 @@ func (d *Driver) Diff(id, parent string) (io.ReadCloser, error) {
 // Changes produces a list of changes between the specified layer and its
 // parent layer. If parent is "", then all changes will be ADD changes.
 func (d *Driver) Changes(id, parent string) ([]archive.Change, error) {
-	if useNaiveDiff(d.home) || !d.isParent(id, parent) {
-		return d.naiveDiff.Changes(id, parent)
-	}
-	// Overlay doesn't have snapshots, so we need to get changes from all parent
-	// layers.
-	diffPath := d.getDiffPath(id)
-	layers, err := d.getLowerDirs(id)
-	if err != nil {
-		return nil, err
-	}
-
-	return archive.OverlayChanges(layers, diffPath)
+	return d.naiveDiff.Changes(id, parent)
 }

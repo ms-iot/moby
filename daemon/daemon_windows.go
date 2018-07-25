@@ -195,11 +195,20 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 	warnings := []string{}
 
 	hyperv := daemon.runAsHyperVContainer(hostConfig)
-	if !hyperv && system.IsWindowsClient() && !system.IsIoTCore() {
-		// @engine maintainers. This block should not be removed. It partially enforces licensing
-		// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
-		return warnings, fmt.Errorf("Windows client operating systems only support Hyper-V containers")
-	}
+	if !hyperv {
+        switch system.GetProcessIsolationPolicy() {
+        default:
+            // system.PROC_ISOLATION_DEFAULT:
+            if system.IsWindowsClient() && !system.IsIoTCore() {
+                // @engine maintainers. This block should not be removed. It partially enforces licensing
+                // restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
+                return warnings, fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+            }
+        case system.PROC_ISOLATION_DENY:
+            return warnings, fmt.Errorf("Process isolation not allowed by policy") 
+        case system.PROC_ISOLATION_ALLOW:
+        }
+    }
 
 	w, err := verifyContainerResources(&hostConfig.Resources, hyperv)
 	warnings = append(warnings, w...)
@@ -612,15 +621,22 @@ func (daemon *Daemon) setDefaultIsolation() error {
 				daemon.defaultIsolation = containertypes.Isolation("hyperv")
 			}
 			if containertypes.Isolation(val).IsProcess() {
-				if system.IsWindowsClient() && !system.IsIoTCore() {
-					// @engine maintainers. This block should not be removed. It partially enforces licensing
-					// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
-					return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+				switch system.GetProcessIsolationPolicy() {
+				default: 
+                    // system.PROC_ISOLATION_DEFAULT:
+					if system.IsWindowsClient() && !system.IsIoTCore() {
+						// @engine maintainers. This block should not be removed. It partially enforces licensing
+						// restrictions on Windows. Ping @jhowardmsft if there are concerns or PRs to change this.
+						return fmt.Errorf("Windows client operating systems only support Hyper-V containers")
+					}
+				case system.PROC_ISOLATION_DENY:
+						return fmt.Errorf("Process isolation not allowed by policy")
+				case system.PROC_ISOLATION_ALLOW:
 				}
 				daemon.defaultIsolation = containertypes.Isolation("process")
 			}
 		default:
-			return fmt.Errorf("Unrecognised exec-opt '%s'\n", key)
+			return fmt.Errorf("Unrecognized exec-opt '%s'\n", key)
 		}
 	}
 

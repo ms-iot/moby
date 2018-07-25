@@ -6,6 +6,20 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
+	"golang.org/x/sys/windows/registry"
+)
+
+type procisolationpolicy int32
+
+const (
+	PROC_ISOLATION_DEFAULT procisolationpolicy = iota
+	PROC_ISOLATION_ALLOW
+	PROC_ISOLATION_DENY
+)
+
+const (
+	hcsPolicyRegPath = `SOFTWARE\Microsoft\Windows NT\CurrentVersion\HostComputeService\Policy`
+	isProcessIsolationAllowedRegValName = `ProcessIsolationIsAllowed`
 )
 
 var (
@@ -86,6 +100,35 @@ func IsIoTCore() bool {
 	const productIoTUAP = 0x0000007B
 	const productIoTUAPCommercial = 0x00000083
 	return returnedProductType == productIoTUAP || returnedProductType == productIoTUAPCommercial
+}
+
+// GetProcessIsolationPolicy returns the process based container policy
+func GetProcessIsolationPolicy() procisolationpolicy {
+	var (
+		k   registry.Key
+		err error
+		val uint64
+	)
+	defer func() {
+		if k != 0 { 
+			k.Close() 
+		}
+	}()
+
+	if k, err = registry.OpenKey(registry.LOCAL_MACHINE, hcsPolicyRegPath, registry.QUERY_VALUE); err != nil {
+		return PROC_ISOLATION_DEFAULT
+	}
+	if val, _, err = k.GetIntegerValue(isProcessIsolationAllowedRegValName); err != nil {
+		return PROC_ISOLATION_DEFAULT
+	}
+    switch val {
+    default:
+        return PROC_ISOLATION_DEFAULT
+    case 0:
+        return PROC_ISOLATION_DENY
+    case 1:
+        return PROC_ISOLATION_ALLOW
+    }
 }
 
 // Unmount is a platform-specific helper function to call

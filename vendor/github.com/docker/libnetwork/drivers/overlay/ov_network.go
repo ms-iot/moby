@@ -244,7 +244,15 @@ func (d *driver) DeleteNetwork(nid string) error {
 	}
 
 	d.Lock()
-	defer d.Unlock()
+	// Only perform a peer flush operation (if required) AFTER unlocking
+	// the driver lock to avoid deadlocking w/ the peerDB.
+	var doPeerFlush bool
+	defer func() {
+		d.Unlock()
+		if doPeerFlush {
+			d.peerFlush(nid)
+		}
+	}()
 
 	// This is similar to d.network(), but we need to keep holding the lock
 	// until we are done removing this network.
@@ -266,11 +274,11 @@ func (d *driver) DeleteNetwork(nid string) error {
 		}
 
 		if err := d.deleteEndpointFromStore(ep); err != nil {
-			logrus.Warnf("Failed to delete overlay endpoint %s from local store: %v", ep.id[0:7], err)
+			logrus.Warnf("Failed to delete overlay endpoint %.7s from local store: %v", ep.id, err)
 		}
 	}
 	// flush the peerDB entries
-	d.peerFlush(nid)
+	doPeerFlush = true
 	delete(d.networks, nid)
 
 	vnis, err := n.releaseVxlanID()

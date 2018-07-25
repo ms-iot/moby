@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/integration/internal/container"
+	net "github.com/docker/docker/integration/internal/network"
 	n "github.com/docker/docker/integration/network"
 	"github.com/docker/docker/internal/test/daemon"
-	"github.com/gotestyourself/gotestyourself/assert"
-	"github.com/gotestyourself/gotestyourself/skip"
+	"gotest.tools/assert"
+	"gotest.tools/skip"
 )
 
 func TestDockerNetworkMacvlanPersistance(t *testing.T) {
@@ -33,16 +32,13 @@ func TestDockerNetworkMacvlanPersistance(t *testing.T) {
 	client, err := d.NewClient()
 	assert.NilError(t, err)
 
-	_, err = client.NetworkCreate(context.Background(), "dm-persist", types.NetworkCreate{
-		Driver: "macvlan",
-		Options: map[string]string{
-			"parent": "dm-dummy0.60",
-		},
-	})
-	assert.NilError(t, err)
-	assert.Check(t, n.IsNetworkAvailable(client, "dm-persist"))
+	netName := "dm-persist"
+	net.CreateNoError(t, context.Background(), client, netName,
+		net.WithMacvlan("dm-dummy0.60"),
+	)
+	assert.Check(t, n.IsNetworkAvailable(client, netName))
 	d.Restart(t)
-	assert.Check(t, n.IsNetworkAvailable(client, "dm-persist"))
+	assert.Check(t, n.IsNetworkAvailable(client, netName))
 }
 
 func TestDockerNetworkMacvlan(t *testing.T) {
@@ -91,29 +87,25 @@ func testMacvlanOverlapParent(client client.APIClient) func(*testing.T) {
 		n.CreateMasterDummy(t, master)
 		defer n.DeleteInterface(t, master)
 
-		_, err := client.NetworkCreate(context.Background(), "dm-subinterface", types.NetworkCreate{
-			Driver: "macvlan",
-			Options: map[string]string{
-				"parent": "dm-dummy0.40",
-			},
-		})
-		assert.NilError(t, err)
-		assert.Check(t, n.IsNetworkAvailable(client, "dm-subinterface"))
+		netName := "dm-subinterface"
+		parentName := "dm-dummy0.40"
+		net.CreateNoError(t, context.Background(), client, netName,
+			net.WithMacvlan(parentName),
+		)
+		assert.Check(t, n.IsNetworkAvailable(client, netName))
 
-		_, err = client.NetworkCreate(context.Background(), "dm-parent-net-overlap", types.NetworkCreate{
-			Driver: "macvlan",
-			Options: map[string]string{
-				"parent": "dm-dummy0.40",
-			},
-		})
+		_, err := net.Create(context.Background(), client, "dm-parent-net-overlap",
+			net.WithMacvlan(parentName),
+		)
 		assert.Check(t, err != nil)
+
 		// delete the network while preserving the parent link
-		err = client.NetworkRemove(context.Background(), "dm-subinterface")
+		err = client.NetworkRemove(context.Background(), netName)
 		assert.NilError(t, err)
 
-		assert.Check(t, n.IsNetworkNotAvailable(client, "dm-subinterface"))
+		assert.Check(t, n.IsNetworkNotAvailable(client, netName))
 		// verify the network delete did not delete the predefined link
-		n.LinkExists(t, "dm-dummy0")
+		n.LinkExists(t, master)
 	}
 }
 
@@ -121,43 +113,41 @@ func testMacvlanSubinterface(client client.APIClient) func(*testing.T) {
 	return func(t *testing.T) {
 		// verify the same parent interface cannot be used if already in use by an existing network
 		master := "dm-dummy0"
+		parentName := "dm-dummy0.20"
 		n.CreateMasterDummy(t, master)
 		defer n.DeleteInterface(t, master)
-		n.CreateVlanInterface(t, master, "dm-dummy0.20", "20")
+		n.CreateVlanInterface(t, master, parentName, "20")
 
-		_, err := client.NetworkCreate(context.Background(), "dm-subinterface", types.NetworkCreate{
-			Driver: "macvlan",
-			Options: map[string]string{
-				"parent": "dm-dummy0.20",
-			},
-		})
-		assert.NilError(t, err)
-		assert.Check(t, n.IsNetworkAvailable(client, "dm-subinterface"))
+		netName := "dm-subinterface"
+		net.CreateNoError(t, context.Background(), client, netName,
+			net.WithMacvlan(parentName),
+		)
+		assert.Check(t, n.IsNetworkAvailable(client, netName))
 
 		// delete the network while preserving the parent link
-		err = client.NetworkRemove(context.Background(), "dm-subinterface")
+		err := client.NetworkRemove(context.Background(), netName)
 		assert.NilError(t, err)
 
-		assert.Check(t, n.IsNetworkNotAvailable(client, "dm-subinterface"))
+		assert.Check(t, n.IsNetworkNotAvailable(client, netName))
 		// verify the network delete did not delete the predefined link
-		n.LinkExists(t, "dm-dummy0.20")
+		n.LinkExists(t, parentName)
 	}
 }
 
 func testMacvlanNilParent(client client.APIClient) func(*testing.T) {
 	return func(t *testing.T) {
 		// macvlan bridge mode - dummy parent interface is provisioned dynamically
-		_, err := client.NetworkCreate(context.Background(), "dm-nil-parent", types.NetworkCreate{
-			Driver: "macvlan",
-		})
-		assert.NilError(t, err)
-		assert.Check(t, n.IsNetworkAvailable(client, "dm-nil-parent"))
+		netName := "dm-nil-parent"
+		net.CreateNoError(t, context.Background(), client, netName,
+			net.WithMacvlan(""),
+		)
+		assert.Check(t, n.IsNetworkAvailable(client, netName))
 
 		ctx := context.Background()
-		id1 := container.Run(t, ctx, client, container.WithNetworkMode("dm-nil-parent"))
-		id2 := container.Run(t, ctx, client, container.WithNetworkMode("dm-nil-parent"))
+		id1 := container.Run(t, ctx, client, container.WithNetworkMode(netName))
+		id2 := container.Run(t, ctx, client, container.WithNetworkMode(netName))
 
-		_, err = container.Exec(ctx, client, id2, []string{"ping", "-c", "1", id1})
+		_, err := container.Exec(ctx, client, id2, []string{"ping", "-c", "1", id1})
 		assert.Check(t, err == nil)
 	}
 }
@@ -165,20 +155,20 @@ func testMacvlanNilParent(client client.APIClient) func(*testing.T) {
 func testMacvlanInternalMode(client client.APIClient) func(*testing.T) {
 	return func(t *testing.T) {
 		// macvlan bridge mode - dummy parent interface is provisioned dynamically
-		_, err := client.NetworkCreate(context.Background(), "dm-internal", types.NetworkCreate{
-			Driver:   "macvlan",
-			Internal: true,
-		})
-		assert.NilError(t, err)
-		assert.Check(t, n.IsNetworkAvailable(client, "dm-internal"))
+		netName := "dm-internal"
+		net.CreateNoError(t, context.Background(), client, netName,
+			net.WithMacvlan(""),
+			net.WithInternal(),
+		)
+		assert.Check(t, n.IsNetworkAvailable(client, netName))
 
 		ctx := context.Background()
-		id1 := container.Run(t, ctx, client, container.WithNetworkMode("dm-internal"))
-		id2 := container.Run(t, ctx, client, container.WithNetworkMode("dm-internal"))
+		id1 := container.Run(t, ctx, client, container.WithNetworkMode(netName))
+		id2 := container.Run(t, ctx, client, container.WithNetworkMode(netName))
 
 		timeoutCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		_, err = container.Exec(timeoutCtx, client, id1, []string{"ping", "-c", "1", "-w", "1", "8.8.8.8"})
+		_, err := container.Exec(timeoutCtx, client, id1, []string{"ping", "-c", "1", "-w", "1", "8.8.8.8"})
 		// FIXME(vdemeester) check the time of error ?
 		assert.Check(t, err != nil)
 		assert.Check(t, timeoutCtx.Err() == context.DeadlineExceeded)
@@ -190,34 +180,17 @@ func testMacvlanInternalMode(client client.APIClient) func(*testing.T) {
 
 func testMacvlanMultiSubnet(client client.APIClient) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := client.NetworkCreate(context.Background(), "dualstackbridge", types.NetworkCreate{
-			Driver:     "macvlan",
-			EnableIPv6: true,
-			IPAM: &network.IPAM{
-				Config: []network.IPAMConfig{
-					{
-						Subnet:     "172.28.100.0/24",
-						AuxAddress: map[string]string{},
-					},
-					{
-						Subnet:     "172.28.102.0/24",
-						Gateway:    "172.28.102.254",
-						AuxAddress: map[string]string{},
-					},
-					{
-						Subnet:     "2001:db8:abc2::/64",
-						AuxAddress: map[string]string{},
-					},
-					{
-						Subnet:     "2001:db8:abc4::/64",
-						Gateway:    "2001:db8:abc4::254",
-						AuxAddress: map[string]string{},
-					},
-				},
-			},
-		})
-		assert.NilError(t, err)
-		assert.Check(t, n.IsNetworkAvailable(client, "dualstackbridge"))
+		netName := "dualstackbridge"
+		net.CreateNoError(t, context.Background(), client, netName,
+			net.WithMacvlan(""),
+			net.WithIPv6(),
+			net.WithIPAM("172.28.100.0/24", ""),
+			net.WithIPAM("172.28.102.0/24", "172.28.102.254"),
+			net.WithIPAM("2001:db8:abc2::/64", ""),
+			net.WithIPAM("2001:db8:abc4::/64", "2001:db8:abc4::254"),
+		)
+
+		assert.Check(t, n.IsNetworkAvailable(client, netName))
 
 		// start dual stack containers and verify the user specified --ip and --ip6 addresses on subnets 172.28.100.0/24 and 2001:db8:abc2::/64
 		ctx := context.Background()
@@ -276,28 +249,15 @@ func testMacvlanMultiSubnet(client client.APIClient) func(*testing.T) {
 func testMacvlanAddressing(client client.APIClient) func(*testing.T) {
 	return func(t *testing.T) {
 		// Ensure the default gateways, next-hops and default dev devices are properly set
-		_, err := client.NetworkCreate(context.Background(), "dualstackbridge", types.NetworkCreate{
-			Driver:     "macvlan",
-			EnableIPv6: true,
-			Options: map[string]string{
-				"macvlan_mode": "bridge",
-			},
-			IPAM: &network.IPAM{
-				Config: []network.IPAMConfig{
-					{
-						Subnet:     "172.28.130.0/24",
-						AuxAddress: map[string]string{},
-					},
-					{
-						Subnet:     "2001:db8:abca::/64",
-						Gateway:    "2001:db8:abca::254",
-						AuxAddress: map[string]string{},
-					},
-				},
-			},
-		})
-		assert.NilError(t, err)
-		assert.Check(t, n.IsNetworkAvailable(client, "dualstackbridge"))
+		netName := "dualstackbridge"
+		net.CreateNoError(t, context.Background(), client, netName,
+			net.WithMacvlan(""),
+			net.WithIPv6(),
+			net.WithOption("macvlan_mode", "bridge"),
+			net.WithIPAM("172.28.130.0/24", ""),
+			net.WithIPAM("2001:db8:abca::/64", "2001:db8:abca::254"),
+		)
+		assert.Check(t, n.IsNetworkAvailable(client, netName))
 
 		ctx := context.Background()
 		id1 := container.Run(t, ctx, client,

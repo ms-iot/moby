@@ -538,7 +538,7 @@ func (daemon *Daemon) DaemonLeavesCluster() {
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
-			logrus.Warnf("timeout while waiting for ingress network removal")
+			logrus.Warn("timeout while waiting for ingress network removal")
 		}
 	} else {
 		logrus.Warnf("failed to initiate ingress network removal: %v", err)
@@ -920,6 +920,11 @@ func NewDaemon(config *config.Config, registryService registry.Service, containe
 	}).Info("Docker daemon")
 
 	return d, nil
+}
+
+// DistributionServices returns services controlling daemon storage
+func (daemon *Daemon) DistributionServices() images.DistributionServices {
+	return daemon.imageService.DistributionServices()
 }
 
 func (daemon *Daemon) waitForStartupDone() {

@@ -11,9 +11,9 @@ import (
 	swarmtypes "github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/internal/test/daemon"
 	"github.com/docker/docker/internal/test/environment"
-	"github.com/gotestyourself/gotestyourself/assert"
-	"github.com/gotestyourself/gotestyourself/poll"
-	"github.com/gotestyourself/gotestyourself/skip"
+	"gotest.tools/assert"
+	"gotest.tools/poll"
+	"gotest.tools/skip"
 )
 
 // ServicePoll tweaks the pollSettings for `service`
@@ -84,6 +84,14 @@ func defaultServiceSpec() swarmtypes.ServiceSpec {
 	ServiceWithCommand([]string{"/bin/top"})(&spec)
 	ServiceWithReplicas(1)(&spec)
 	return spec
+}
+
+// ServiceWithInit sets whether the service should use init or not
+func ServiceWithInit(b *bool) func(*swarmtypes.ServiceSpec) {
+	return func(spec *swarmtypes.ServiceSpec) {
+		ensureContainerSpec(spec)
+		spec.TaskTemplate.ContainerSpec.Init = b
+	}
 }
 
 // ServiceWithImage sets the image to use for the service

@@ -36,7 +36,7 @@ import (
 	"github.com/docker/libnetwork/resolvconf"
 	"github.com/docker/libnetwork/types"
 	"github.com/go-check/check"
-	"github.com/gotestyourself/gotestyourself/icmd"
+	"gotest.tools/icmd"
 )
 
 // "test123" should be printed by docker run
@@ -623,6 +623,7 @@ func (s *DockerSuite) TestRunCreateVolumeWithSymlink(c *check.C) {
 	// Cannot run on Windows as relies on Linux-specific functionality (sh -c mount...)
 	testRequires(c, DaemonIsLinux)
 	workingDirectory, err := ioutil.TempDir("", "TestRunCreateVolumeWithSymlink")
+	c.Assert(err, checker.IsNil)
 	image := "docker-test-createvolumewithsymlink"
 
 	buildCmd := exec.Command(dockerBinary, "build", "-t", image, "-")
@@ -3948,6 +3949,7 @@ func (s *DockerSuite) TestRunAttachFailedNoLeak(c *check.C) {
 	// TODO Windows Post TP5. Fix the error message string
 	c.Assert(strings.Contains(string(out), "port is already allocated") ||
 		strings.Contains(string(out), "were not connected because a duplicate name exists") ||
+		strings.Contains(string(out), "The specified port already exists") ||
 		strings.Contains(string(out), "HNS failed with error : Failed to create endpoint") ||
 		strings.Contains(string(out), "HNS failed with error : The object already exists"), checker.Equals, true, check.Commentf("Output: %s", out))
 	dockerCmd(c, "rm", "-f", "test")

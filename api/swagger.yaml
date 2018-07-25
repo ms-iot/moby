@@ -2721,6 +2721,10 @@ definitions:
               - "default"
               - "process"
               - "hyperv"
+          Init:
+            description: "Run an init inside the container that forwards signals and reaps processes. This field is omitted if empty, and the default (as configured on the daemon) is used."
+            type: "boolean"
+            x-nullable: true
       NetworkAttachmentSpec:
         description: |
           Read-only spec type for non-swarm containers attached to swarm overlay
@@ -5918,7 +5922,7 @@ paths:
           headers:
             X-Docker-Container-Path-Stat:
               type: "string"
-              description: "TODO"
+              description: "A base64 - encoded JSON object with some filesystem header information about the path"
         400:
           description: "Bad parameter"
           schema:
@@ -7585,6 +7589,7 @@ paths:
           schema:
             type: "object"
             title: "VolumeListResponse"
+            description: "Volume list response"
             required: [Volumes, Warnings]
             properties:
               Volumes:
@@ -7661,6 +7666,8 @@ paths:
           description: "Volume configuration"
           schema:
             type: "object"
+            description: "Volume configuration"
+            title: "VolumeConfig"
             properties:
               Name:
                 description: "The new volume's name. If not specified, Docker generates a name."

@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -29,6 +27,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/opencontainers/go-digest"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )
@@ -97,8 +96,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	go func() {
 		// TODO @jhowardmsft LCOW Support: This will need revisiting as
 		// the stack is built up to include LCOW support for swarm.
-		platform := runtime.GOOS
-		err := c.imageBackend.PullImage(ctx, c.container.image(), "", platform, metaHeaders, authConfig, pw)
+		err := c.imageBackend.PullImage(ctx, c.container.image(), "", nil, metaHeaders, authConfig, pw)
 		pw.CloseWithError(err)
 	}()
 
@@ -174,7 +172,7 @@ func (c *containerAdapter) createNetworks(ctx context.Context) error {
 func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 	for name, v := range c.container.networksAttachments {
 		if err := c.backend.DeleteManagedNetwork(v.Network.ID); err != nil {
-			switch err.(type) {
+			switch errors.Cause(err).(type) {
 			case *libnetwork.ActiveEndpointsError:
 				continue
 			case libnetwork.ErrNoSuchNetwork:

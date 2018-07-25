@@ -305,6 +305,13 @@ func (c *client) createWindows(id string, spec *specs.Spec, runtimeOptions inter
 	}
 	configuration.MappedPipes = mps
 
+	// Add any device assignments
+	if len(spec.Windows.Devices) > 0 {
+		for _, d := range spec.Windows.Devices {
+			configuration.AssignedDevices = append(configuration.AssignedDevices, hcsshim.AssignedDevice{InterfaceClassGUID: d.ID})
+		}
+	}
+
 	hcsContainer, err := hcsshim.CreateContainer(id, configuration)
 	if err != nil {
 		return err
@@ -493,6 +500,10 @@ func (c *client) createLinux(id string, spec *specs.Spec, runtimeOptions interfa
 				ContainerPath:     path.Join(uvmPath, mount.Destination),
 				CreateInUtilityVM: true,
 				ReadOnly:          readonly,
+			}
+			// If we are 1803/RS4+ enable LinuxMetadata support by default
+			if system.GetOSVersion().Build >= 17134 {
+				md.LinuxMetadata = true
 			}
 			mds = append(mds, md)
 			specMount.Source = path.Join(uvmPath, mount.Destination)

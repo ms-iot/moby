@@ -2,6 +2,7 @@ package service // import "github.com/docker/docker/integration/service"
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -10,11 +11,65 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	swarmtypes "github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/integration/internal/network"
 	"github.com/docker/docker/integration/internal/swarm"
-	"github.com/gotestyourself/gotestyourself/assert"
-	is "github.com/gotestyourself/gotestyourself/assert/cmp"
-	"github.com/gotestyourself/gotestyourself/poll"
+	"github.com/docker/docker/internal/test/daemon"
+	"gotest.tools/assert"
+	is "gotest.tools/assert/cmp"
+	"gotest.tools/poll"
 )
+
+func TestServiceCreateInit(t *testing.T) {
+	defer setupTest(t)()
+	t.Run("daemonInitDisabled", testServiceCreateInit(false))
+	t.Run("daemonInitEnabled", testServiceCreateInit(true))
+}
+
+func testServiceCreateInit(daemonEnabled bool) func(t *testing.T) {
+	return func(t *testing.T) {
+		var ops = []func(*daemon.Daemon){}
+
+		if daemonEnabled {
+			ops = append(ops, daemon.WithInit)
+		}
+		d := swarm.NewSwarm(t, testEnv, ops...)
+		defer d.Stop(t)
+		client := d.NewClientT(t)
+		defer client.Close()
+
+		booleanTrue := true
+		booleanFalse := false
+
+		serviceID := swarm.CreateService(t, d)
+		poll.WaitOn(t, serviceRunningTasksCount(client, serviceID, 1), swarm.ServicePoll)
+		i := inspectServiceContainer(t, client, serviceID)
+		// HostConfig.Init == nil means that it delegates to daemon configuration
+		assert.Check(t, i.HostConfig.Init == nil)
+
+		serviceID = swarm.CreateService(t, d, swarm.ServiceWithInit(&booleanTrue))
+		poll.WaitOn(t, serviceRunningTasksCount(client, serviceID, 1), swarm.ServicePoll)
+		i = inspectServiceContainer(t, client, serviceID)
+		assert.Check(t, is.Equal(true, *i.HostConfig.Init))
+
+		serviceID = swarm.CreateService(t, d, swarm.ServiceWithInit(&booleanFalse))
+		poll.WaitOn(t, serviceRunningTasksCount(client, serviceID, 1), swarm.ServicePoll)
+		i = inspectServiceContainer(t, client, serviceID)
+		assert.Check(t, is.Equal(false, *i.HostConfig.Init))
+	}
+}
+
+func inspectServiceContainer(t *testing.T, client client.APIClient, serviceID string) types.ContainerJSON {
+	t.Helper()
+	filter := filters.NewArgs()
+	filter.Add("label", fmt.Sprintf("com.docker.swarm.service.id=%s", serviceID))
+	containers, err := client.ContainerList(context.Background(), types.ContainerListOptions{Filters: filter})
+	assert.NilError(t, err)
+	assert.Check(t, is.Len(containers, 1))
+
+	i, err := client.ContainerInspect(context.Background(), containers[0].ID)
+	assert.NilError(t, err)
+	return i
+}
 
 func TestCreateServiceMultipleTimes(t *testing.T) {
 	defer setupTest(t)()
@@ -23,28 +78,25 @@ func TestCreateServiceMultipleTimes(t *testing.T) {
 	client := d.NewClientT(t)
 	defer client.Close()
 
-	overlayName := "overlay1"
-	networkCreate := types.NetworkCreate{
-		CheckDuplicate: true,
-		Driver:         "overlay",
-	}
-
-	netResp, err := client.NetworkCreate(context.Background(), overlayName, networkCreate)
-	assert.NilError(t, err)
-	overlayID := netResp.ID
+	overlayName := "overlay1_" + t.Name()
+	overlayID := network.CreateNoError(t, context.Background(), client, overlayName,
+		network.WithCheckDuplicate(),
+		network.WithDriver("overlay"),
+	)
 
 	var instances uint64 = 4
 
+	serviceName := "TestService_" + t.Name()
 	serviceSpec := []swarm.ServiceSpecOpt{
 		swarm.ServiceWithReplicas(instances),
-		swarm.ServiceWithName("TestService"),
+		swarm.ServiceWithName(serviceName),
 		swarm.ServiceWithNetwork(overlayName),
 	}
 
 	serviceID := swarm.CreateService(t, d, serviceSpec...)
 	poll.WaitOn(t, serviceRunningTasksCount(client, serviceID, instances), swarm.ServicePoll)
 
-	_, _, err = client.ServiceInspectWithRaw(context.Background(), serviceID, types.ServiceInspectOptions{})
+	_, _, err := client.ServiceInspectWithRaw(context.Background(), serviceID, types.ServiceInspectOptions{})
 	assert.NilError(t, err)
 
 	err = client.ServiceRemove(context.Background(), serviceID)
@@ -75,29 +127,26 @@ func TestCreateWithDuplicateNetworkNames(t *testing.T) {
 	client := d.NewClientT(t)
 	defer client.Close()
 
-	name := "foo"
-	networkCreate := types.NetworkCreate{
-		CheckDuplicate: false,
-		Driver:         "bridge",
-	}
-
-	n1, err := client.NetworkCreate(context.Background(), name, networkCreate)
-	assert.NilError(t, err)
-
-	n2, err := client.NetworkCreate(context.Background(), name, networkCreate)
-	assert.NilError(t, err)
+	name := "foo_" + t.Name()
+	n1 := network.CreateNoError(t, context.Background(), client, name,
+		network.WithDriver("bridge"),
+	)
+	n2 := network.CreateNoError(t, context.Background(), client, name,
+		network.WithDriver("bridge"),
+	)
 
 	// Dupliates with name but with different driver
-	networkCreate.Driver = "overlay"
-	n3, err := client.NetworkCreate(context.Background(), name, networkCreate)
-	assert.NilError(t, err)
+	n3 := network.CreateNoError(t, context.Background(), client, name,
+		network.WithDriver("overlay"),
+	)
 
 	// Create Service with the same name
 	var instances uint64 = 1
 
+	serviceName := "top_" + t.Name()
 	serviceID := swarm.CreateService(t, d,
 		swarm.ServiceWithReplicas(instances),
-		swarm.ServiceWithName("top"),
+		swarm.ServiceWithName(serviceName),
 		swarm.ServiceWithNetwork(name),
 	)
 
@@ -105,7 +154,7 @@ func TestCreateWithDuplicateNetworkNames(t *testing.T) {
 
 	resp, _, err := client.ServiceInspectWithRaw(context.Background(), serviceID, types.ServiceInspectOptions{})
 	assert.NilError(t, err)
-	assert.Check(t, is.Equal(n3.ID, resp.Spec.TaskTemplate.Networks[0].Target))
+	assert.Check(t, is.Equal(n3, resp.Spec.TaskTemplate.Networks[0].Target))
 
 	// Remove Service
 	err = client.ServiceRemove(context.Background(), serviceID)
@@ -115,19 +164,19 @@ func TestCreateWithDuplicateNetworkNames(t *testing.T) {
 	poll.WaitOn(t, serviceIsRemoved(client, serviceID), swarm.ServicePoll)
 
 	// Remove networks
-	err = client.NetworkRemove(context.Background(), n3.ID)
+	err = client.NetworkRemove(context.Background(), n3)
 	assert.NilError(t, err)
 
-	err = client.NetworkRemove(context.Background(), n2.ID)
+	err = client.NetworkRemove(context.Background(), n2)
 	assert.NilError(t, err)
 
-	err = client.NetworkRemove(context.Background(), n1.ID)
+	err = client.NetworkRemove(context.Background(), n1)
 	assert.NilError(t, err)
 
 	// Make sure networks have been destroyed.
-	poll.WaitOn(t, networkIsRemoved(client, n3.ID), poll.WithTimeout(1*time.Minute), poll.WithDelay(10*time.Second))
-	poll.WaitOn(t, networkIsRemoved(client, n2.ID), poll.WithTimeout(1*time.Minute), poll.WithDelay(10*time.Second))
-	poll.WaitOn(t, networkIsRemoved(client, n1.ID), poll.WithTimeout(1*time.Minute), poll.WithDelay(10*time.Second))
+	poll.WaitOn(t, networkIsRemoved(client, n3), poll.WithTimeout(1*time.Minute), poll.WithDelay(10*time.Second))
+	poll.WaitOn(t, networkIsRemoved(client, n2), poll.WithTimeout(1*time.Minute), poll.WithDelay(10*time.Second))
+	poll.WaitOn(t, networkIsRemoved(client, n1), poll.WithTimeout(1*time.Minute), poll.WithDelay(10*time.Second))
 }
 
 func TestCreateServiceSecretFileMode(t *testing.T) {
@@ -138,18 +187,20 @@ func TestCreateServiceSecretFileMode(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
+	secretName := "TestSecret_" + t.Name()
 	secretResp, err := client.SecretCreate(ctx, swarmtypes.SecretSpec{
 		Annotations: swarmtypes.Annotations{
-			Name: "TestSecret",
+			Name: secretName,
 		},
 		Data: []byte("TESTSECRET"),
 	})
 	assert.NilError(t, err)
 
 	var instances uint64 = 1
+	serviceName := "TestService_" + t.Name()
 	serviceID := swarm.CreateService(t, d,
 		swarm.ServiceWithReplicas(instances),
-		swarm.ServiceWithName("TestService"),
+		swarm.ServiceWithName(serviceName),
 		swarm.ServiceWithCommand([]string{"/bin/sh", "-c", "ls -l /etc/secret || /bin/top"}),
 		swarm.ServiceWithSecret(&swarmtypes.SecretReference{
 			File: &swarmtypes.SecretReferenceFileTarget{
@@ -159,7 +210,7 @@ func TestCreateServiceSecretFileMode(t *testing.T) {
 				Mode: 0777,
 			},
 			SecretID:   secretResp.ID,
-			SecretName: "TestSecret",
+			SecretName: secretName,
 		}),
 	)
 
@@ -189,7 +240,7 @@ func TestCreateServiceSecretFileMode(t *testing.T) {
 	poll.WaitOn(t, serviceIsRemoved(client, serviceID), swarm.ServicePoll)
 	poll.WaitOn(t, noTasks(client), swarm.ServicePoll)
 
-	err = client.SecretRemove(ctx, "TestSecret")
+	err = client.SecretRemove(ctx, secretName)
 	assert.NilError(t, err)
 }
 
@@ -201,17 +252,19 @@ func TestCreateServiceConfigFileMode(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
+	configName := "TestConfig_" + t.Name()
 	configResp, err := client.ConfigCreate(ctx, swarmtypes.ConfigSpec{
 		Annotations: swarmtypes.Annotations{
-			Name: "TestConfig",
+			Name: configName,
 		},
 		Data: []byte("TESTCONFIG"),
 	})
 	assert.NilError(t, err)
 
 	var instances uint64 = 1
+	serviceName := "TestService_" + t.Name()
 	serviceID := swarm.CreateService(t, d,
-		swarm.ServiceWithName("TestService"),
+		swarm.ServiceWithName(serviceName),
 		swarm.ServiceWithCommand([]string{"/bin/sh", "-c", "ls -l /etc/config || /bin/top"}),
 		swarm.ServiceWithReplicas(instances),
 		swarm.ServiceWithConfig(&swarmtypes.ConfigReference{
@@ -222,7 +275,7 @@ func TestCreateServiceConfigFileMode(t *testing.T) {
 				Mode: 0777,
 			},
 			ConfigID:   configResp.ID,
-			ConfigName: "TestConfig",
+			ConfigName: configName,
 		}),
 	)
 
@@ -252,7 +305,7 @@ func TestCreateServiceConfigFileMode(t *testing.T) {
 	poll.WaitOn(t, serviceIsRemoved(client, serviceID))
 	poll.WaitOn(t, noTasks(client))
 
-	err = client.ConfigRemove(ctx, "TestConfig")
+	err = client.ConfigRemove(ctx, configName)
 	assert.NilError(t, err)
 }
 
