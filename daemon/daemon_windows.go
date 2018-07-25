@@ -196,7 +196,7 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 
 	hyperv := daemon.runAsHyperVContainer(hostConfig)
 	if !hyperv {
-        switch system.GetPorcessIsolalationPolicy() {
+        switch system.GetProcessIsolationPolicy() {
         default:
             // system.PROC_ISOLATION_DEFAULT:
             if system.IsWindowsClient() && !system.IsIoTCore() {
@@ -621,7 +621,7 @@ func (daemon *Daemon) setDefaultIsolation() error {
 				daemon.defaultIsolation = containertypes.Isolation("hyperv")
 			}
 			if containertypes.Isolation(val).IsProcess() {
-				switch system.GetPorcessIsolalationPolicy() {
+				switch system.GetProcessIsolationPolicy() {
 				default: 
                     // system.PROC_ISOLATION_DEFAULT:
 					if system.IsWindowsClient() && !system.IsIoTCore() {

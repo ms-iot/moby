@@ -102,8 +102,8 @@ func IsIoTCore() bool {
 	return returnedProductType == productIoTUAP || returnedProductType == productIoTUAPCommercial
 }
 
-// GetPorcessIsolalationPolicy returns the process container policy
-func GetPorcessIsolalationPolicy() procisolationpolicy {
+// GetProcessIsolationPolicy returns the process based container policy
+func GetProcessIsolationPolicy() procisolationpolicy {
 	var (
 		k   registry.Key
 		err error
