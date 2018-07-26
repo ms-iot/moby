@@ -5,7 +5,6 @@ package hcsshim
 import (
 	"syscall"
 	"unsafe"
-	"runtime"
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
@@ -130,14 +129,7 @@ func _activateLayer(info *driverInfo, id *uint16) (hr error) {
 	if hr = procActivateLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall(procActivateLayer.Addr(), 3, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)))
-	} else {
-		r0, _, _ = syscall.Syscall(procActivateLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), 0)
-	}
+	r0, _, _ := syscall.Syscall(procActivateLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -166,16 +158,7 @@ func _copyLayer(info *driverInfo, srcId *uint16, dstId *uint16, descriptors []WC
 	if hr = procCopyLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procCopyLayer.Addr(), 6, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(srcId)), 
-			uintptr(unsafe.Pointer(dstId)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)))
-	} else {
-		r0, _, _ = syscall.Syscall6(procCopyLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(srcId)), uintptr(unsafe.Pointer(dstId)), uintptr(unsafe.Pointer(_p2)), 
-			uintptr(len(descriptors)), 0)
-	}
+	r0, _, _ := syscall.Syscall6(procCopyLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(srcId)), uintptr(unsafe.Pointer(dstId)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -201,15 +184,7 @@ func _createLayer(info *driverInfo, id *uint16, parent *uint16) (hr error) {
 	if hr = procCreateLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procCreateLayer.Addr(), 4, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(parent)), 0, 0)
-	} else {
-		r0, _, _ = syscall.Syscall(procCreateLayer.Addr(), 3, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(parent)))
-	}
+	r0, _, _ := syscall.Syscall(procCreateLayer.Addr(), 3, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(parent)))
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -238,16 +213,7 @@ func _createSandboxLayer(info *driverInfo, id *uint16, parent *uint16, descripto
 	if hr = procCreateSandboxLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procCreateSandboxLayer.Addr(), 6, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(parent)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)))
-	} else {
-		r0, _, _ = syscall.Syscall6(procCreateSandboxLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(parent)), uintptr(unsafe.Pointer(_p2)), 
-			uintptr(len(descriptors)), 0)
-	}
+	r0, _, _ := syscall.Syscall6(procCreateSandboxLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(parent)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -267,14 +233,7 @@ func _expandSandboxSize(info *driverInfo, id *uint16, size uint64) (hr error) {
 	if hr = procExpandSandboxSize.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procExpandSandboxSize.Addr(), 4, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), uintptr(size), 0, 0)
-	} else {
-		r0, _, _ = syscall.Syscall(procExpandSandboxSize.Addr(), 3, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(size))
-	}
+	r0, _, _ := syscall.Syscall(procExpandSandboxSize.Addr(), 3, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(size))
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -294,14 +253,7 @@ func _deactivateLayer(info *driverInfo, id *uint16) (hr error) {
 	if hr = procDeactivateLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall(procDeactivateLayer.Addr(), 3, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)))
-	} else {
-		r0, _, _ = syscall.Syscall(procDeactivateLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), 0)
-	}
+	r0, _, _ := syscall.Syscall(procDeactivateLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -321,14 +273,7 @@ func _destroyLayer(info *driverInfo, id *uint16) (hr error) {
 	if hr = procDestroyLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall(procDestroyLayer.Addr(), 3, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)))
-	} else {
-		r0, _, _ = syscall.Syscall(procDestroyLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), 0)
-	}
+	r0, _, _ := syscall.Syscall(procDestroyLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -357,16 +302,7 @@ func _exportLayer(info *driverInfo, id *uint16, path *uint16, descriptors []WC_L
 	if hr = procExportLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procExportLayer.Addr(), 6, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(path)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)))
-	} else {
-		r0, _, _ = syscall.Syscall6(procExportLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(path)), uintptr(unsafe.Pointer(_p2)), 
-			uintptr(len(descriptors)), 0)
-	}
+	r0, _, _ := syscall.Syscall6(procExportLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(path)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -386,15 +322,7 @@ func _getLayerMountPath(info *driverInfo, id *uint16, length *uintptr, buffer *u
 	if hr = procGetLayerMountPath.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procGetLayerMountPath.Addr(), 5, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(length)), uintptr(unsafe.Pointer(buffer)), 0)
-	} else {
-		r0, _, _ = syscall.Syscall6(procGetLayerMountPath.Addr(), 4, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(length)), uintptr(unsafe.Pointer(buffer)), 0, 0)
-	}
+	r0, _, _ := syscall.Syscall6(procGetLayerMountPath.Addr(), 4, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(length)), uintptr(unsafe.Pointer(buffer)), 0, 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -434,16 +362,7 @@ func _importLayer(info *driverInfo, id *uint16, path *uint16, descriptors []WC_L
 	if hr = procImportLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procImportLayer.Addr(), 6, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(path)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)))
-	} else {
-		r0, _, _ = syscall.Syscall6(procImportLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(path)), uintptr(unsafe.Pointer(_p2)), 
-			uintptr(len(descriptors)), 0)
-	}
+	r0, _, _ := syscall.Syscall6(procImportLayer.Addr(), 5, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(path)), uintptr(unsafe.Pointer(_p2)), uintptr(len(descriptors)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -463,15 +382,7 @@ func _layerExists(info *driverInfo, id *uint16, exists *uint32) (hr error) {
 	if hr = procLayerExists.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procLayerExists.Addr(), 4, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(exists)), 0, 0)
-	} else {
-		r0, _, _ = syscall.Syscall(procLayerExists.Addr(), 3, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(exists)))
-	}
+	r0, _, _ := syscall.Syscall(procLayerExists.Addr(), 3, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(exists)))
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -515,15 +426,7 @@ func _prepareLayer(info *driverInfo, id *uint16, descriptors []WC_LAYER_DESCRIPT
 	if hr = procPrepareLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procPrepareLayer.Addr(), 5, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), 
-			uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), 0)
-	} else {
-		r0, _, _ = syscall.Syscall6(procPrepareLayer.Addr(), 4, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), 0, 0)
-	}
+	r0, _, _ := syscall.Syscall6(procPrepareLayer.Addr(), 4, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), 0, 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -543,14 +446,7 @@ func _unprepareLayer(info *driverInfo, id *uint16) (hr error) {
 	if hr = procUnprepareLayer.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall(procUnprepareLayer.Addr(), 3, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)))
-	} else {
-		r0, _, _ = syscall.Syscall(procUnprepareLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), 0)
-	}
+	r0, _, _ := syscall.Syscall(procUnprepareLayer.Addr(), 2, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -614,16 +510,7 @@ func _importLayerBegin(info *driverInfo, id *uint16, descriptors []WC_LAYER_DESC
 	if hr = procImportLayerBegin.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procImportLayerBegin.Addr(), 6, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), 
-			uintptr(len(descriptors)), uintptr(unsafe.Pointer(context)))
-	} else {
-		r0, _, _ = syscall.Syscall6(procImportLayerBegin.Addr(), 5, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), 
-			uintptr(unsafe.Pointer(context)), 0)
-	}
+	r0, _, _ := syscall.Syscall6(procImportLayerBegin.Addr(), 5, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), uintptr(unsafe.Pointer(context)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
@@ -693,16 +580,7 @@ func _exportLayerBegin(info *driverInfo, id *uint16, descriptors []WC_LAYER_DESC
 	if hr = procExportLayerBegin.Find(); hr != nil {
 		return
 	}
-	var r0 uintptr
-	if runtime.GOARCH == "arm" {
-		r0, _, _ = syscall.Syscall6(procExportLayerBegin.Addr(), 6, uintptr((*info).Flavour), 
-			uintptr(unsafe.Pointer((*info).HomeDirp)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), 
-			uintptr(len(descriptors)), uintptr(unsafe.Pointer(context)))
-	} else {
-		r0, _, _ = syscall.Syscall6(procExportLayerBegin.Addr(), 5, uintptr(unsafe.Pointer(info)), 
-			uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), 
-			uintptr(unsafe.Pointer(context)), 0)
-	}
+	r0, _, _ := syscall.Syscall6(procExportLayerBegin.Addr(), 5, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(_p1)), uintptr(len(descriptors)), uintptr(unsafe.Pointer(context)), 0)
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
