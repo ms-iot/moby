@@ -5,7 +5,6 @@ package hcsshim
 import (
 	"syscall"
 	"unsafe"
-	"runtime"
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
@@ -324,7 +323,6 @@ func _getLayerMountPath(info *driverInfo, id *uint16, length *uintptr, buffer *u
 		return
 	}
 	r0, _, _ := syscall.Syscall6(procGetLayerMountPath.Addr(), 4, uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(id)), uintptr(unsafe.Pointer(length)), uintptr(unsafe.Pointer(buffer)), 0, 0)
-	}
 	if int32(r0) < 0 {
 		hr = syscall.Errno(win32FromHresult(r0))
 	}
