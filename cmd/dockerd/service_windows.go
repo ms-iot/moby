@@ -421,8 +421,8 @@ func initPanicFile(path string) error {
 func removePanicFile() {
 	if st, err := panicFile.Stat(); err == nil {
 		if st.Size() == 0 {
-			sh := uintptr(windows.STD_ERROR_HANDLE)
-			setStdHandle.Call(sh, uintptr(oldStderr))
+			sh := uint32(windows.STD_ERROR_HANDLE)
+			setStdHandle.Call(uintptr(sh), uintptr(oldStderr))
 			panicFile.Close()
 			os.Remove(panicFile.Name())
 		}
